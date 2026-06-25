@@ -1,0 +1,429 @@
+# CookTrace changelog
+
+## v1.0.0-rc.1 (2026-06-07)
+
+First public release candidate. Brings the dev branch to feature
+completeness and parity with the wider TraceApps family (NutriTrace,
+LiftTrace), then layers polish, dependency upgrades, and the Android
+local-mode build that lets CookTrace run standalone on a phone
+without a server.
+
+### Android app — standalone or server-connected
+- **First-launch wizard** offers Use Locally (pure offline, on-device
+  SQLite) or Connect to Server (URL + login). Mode is switchable later
+  in Settings, with a merge dialog when bringing existing local data
+  to a server for the first time.
+- **Differential sync engine** with 30-second background timer +
+  visibilitychange resume. Push pending writes, pull recent changes,
+  surface real failure messages in the sync banner.
+- **Offline image cache**: sync downloads every server image to the
+  device so recipe / pantry / diary thumbnails render without a
+  connection. Cache filenames are hashed so cross-product collisions
+  on OpenFoodFacts URLs no longer overwrite each other.
+- **Native barcode scanning** via ML Kit. Capacitor 8 base. Shared
+  TraceApps release keystore so reinstalling between dev and release
+  builds doesn't wipe local data.
+
+### Recipe importers
+- **Mealie**, **Tandoor**, **Paprika** export-zip importers with
+  per-recipe selection, dedup, and category / tag carryover.
+- **Mealie timeline import**: pulls cook-event history (with photos
+  and notes), backdates recipe created_at to the original add date,
+  matches cook events to your existing recipes.
+- Drag-and-drop file picker, scan + commit two-step flow.
+
+### NutriTrace federation
+- **Smart View on OFF / Share to OFF dual button** in the pantry item
+  editor. When the barcode already exists on Open Food Facts, the
+  button switches to "View on OFF" and opens the product page; when
+  it doesn't, the button uploads the local row and reports back with a
+  verify status row ("Confirmed live on Open Food Facts" / "Submitted,
+  may take a few minutes to appear").
+- **Persistent Connected pill** in Settings → NutriTrace federation so
+  you can see at a glance whether the integration is working without
+  re-running the test.
+- **OFF nutriment _modifier filter**: values OFF flags as algorithmic
+  estimates (rather than label-derived facts) no longer get imported
+  as real measured values.
+- **UPC-A → EAN-13 canonical-form normalization** in the OFF lookup so
+  12-digit scans hit the same product as their 13-digit equivalents.
+
+### Trace AI assistant
+- **Hold-to-record voice on the FAB** for hands-free Smart Log. Hold
+  the FAB to start recording (haptic + beep), release to send to the
+  AI, slide your finger >100px away to cancel mid-recording. Status
+  pill above the FAB shows the gesture state ("Listening… Release to
+  Send" / "✕ Release to Cancel").
+- **Chat panel** now slides up as a full-width mobile bottom sheet
+  with a drag handle, dimmed backdrop, and rounded top corners.
+  Desktop keeps the floating-card layout, anchored bottom-right.
+- **Always-visible Clear Chat button** in the panel header (was
+  hidden when there were no messages).
+- **In-chat mic button removed** for parity with NutriTrace and
+  LiftTrace — voice now lives only on the FAB hold gesture.
+
+### Nutrition Facts box
+- **FDA-correct sodium placement**: sodium moves up into the macros
+  block (between Cholesterol and Total Carbohydrate) where it belongs
+  on a real food label, rather than sitting under Protein in its own
+  rule.
+- **Servings per recipe** line added above the Serving Size, matching
+  the "Servings Per Container" pattern on packaging.
+- **Per-serving grams when computable**: the Serving Size line shows
+  `~85g` instead of `1 of 8` when every ingredient in the recipe
+  resolves to a known weight or density. Otherwise it falls back to
+  `1 of N` or `Per serving`.
+
+### Pantry item editor (single unified surface)
+- **Slide-up sheet** is now the single editor for every pantry-item
+  flow (view, edit, create, barcode scan). The full-page editor is
+  retired from the navigation surface.
+- **Inline edit**: view-mode fields flip to inputs in place within the
+  same two-column grid so the surface doesn't change shape.
+- **Header actions** (Edit / Delete in view, Cancel / Save in edit)
+  sit as icon buttons in the top right of the sheet, mirroring
+  RecipeView's chrome pattern. Red Close + Delete + Cancel, green
+  Save.
+- **In Stock derives from quantity** — `quantity === 0` reads as out
+  of stock, `null` or `> 0` reads as in stock. The explicit toggle
+  was retired. Items you keep but never count (salt, oil) stay in
+  stock without needing a number.
+
+### Appearance + chrome
+- **Trace Every Recipe — From Pantry to Plate**: new tagline across
+  the README, sidebar, About card, Wizard welcome, and PWA manifest.
+- **Gradient page-header banner** as a middle option between Animated
+  and Off. New users land on Gradient as the default; existing users
+  keep whatever they had.
+- **Compact page header** when banners are off — saves ~40px on
+  every page without the illustrated SVG.
+- **"You're All Set" Wizard celebration** before landing on the
+  Recipes tab — trophy icon + confetti, ~1.8s beat. Honors
+  prefers-reduced-motion.
+- **Title case sweep** across UI chrome: relative times ("3 Days
+  Ago"), heatmap stats ("117 Cooks · 80 Active Days"), recipe header
+  ("Last Cooked", "Cooked N Times"), nutrition box ("Servings Per
+  Recipe").
+- **Native number-input spinner buttons hidden** globally — every
+  number input across the app renders without the up/down arrows.
+- **40×40 page-header action buttons** standardized across routes to
+  match the floating menu button. No more mixed 30/34/40 px sizing.
+
+### Scheduled backups
+- **Auto-backup**: schedule full backups daily, weekly, or monthly on
+  the server side, plus a local-mode equivalent on Android. Optional
+  retention window auto-prunes older snapshots.
+- **Backup error toasts** when the list fetch fails (was a silent
+  empty list).
+
+### OIDC SSO
+- **RP-initiated logout** on PWA and Android — signing out of
+  CookTrace also signs you out of the identity provider when the
+  provider supports the end-session endpoint.
+
+### Dependency upgrades
+- **Svelte 4 → 5** with the `runes: false` + `compatibility.componentApi: 4`
+  compat shim. Same component API, smaller runtime.
+- **Vite 5 → 7** + **vite-plugin-pwa 0.19 → 1.3**.
+- **Express 4 → 5** with the new `path-to-regexp` v8 wildcard syntax.
+- **bcryptjs 2 → 3** (ESM).
+- **nodemailer 8.0.3 → 8.0.7**.
+
+### Diagnostics
+- **Image cache URL hashing** — fixes a collision bug where two
+  OpenFoodFacts products whose URLs end with the same filename
+  (`front_en.4.400.jpg`) would overwrite each other in the local
+  cache and display each other's pictures.
+- **Log + crash file share via Directory.Cache** so the receiving app
+  (Drive, Files, Solid Explorer) actually gets the file contents
+  instead of the share-intent's title text.
+
+## v0.11.0-beta.1 (2026-05-11)
+
+Polish and power pass across every primary surface. Diary, Recipes,
+Pantry, Shopping, Manage, and the share flow all picked up real
+features without changing the underlying shape of the app.
+
+### Diary v2
+- **Meal-type slots** on planned and logged cooks (breakfast, lunch,
+  dinner, snack) with a chip picker in the planner and the log dialog
+- **Per-cook rating** separate from the recipe's overall rating, so
+  one bad attempt doesn't drag down a five-star recipe
+- **Stats card** at the top with This Week, Current Streak, Longest
+  Streak, and Most Cooked This Month. Current-streak has a grace
+  window so today not being cooked yet doesn't reset the run
+- **Cook activity heatmap**: GitHub-style contribution graph over
+  the last year, sized to fill the card on desktop and horizontally
+  scrollable on phones. Click a cell to jump the Month view there
+- **Photos view**: chronological tile grid of every cook photo, with
+  rating and multi-photo indicators. The lightbox pages between
+  siblings on multi-photo cooks
+- **Filter by recipe**: chip and picker apply across List, Month,
+  and Photos. Dedicated empty state when the filter has no matches
+  in the visible range
+- **Dashboard layout on wide screens**: heatmap and stats card go
+  side-by-side at 1280px and above instead of stacking, freeing
+  screen room for the actual entries
+
+### Sharing
+- **Recipe card** moved from a server-rendered URL to a client-side
+  PNG attached to the share sheet. Works fully offline, every
+  recipient gets a real image inline regardless of channel
+- **Full recipe content** on the card (hero, title, ingredients,
+  numbered steps) instead of a teaser image. Plain-text version
+  rides along in the share text body so Mail, SMS, and iMessage
+  carry the recipe too
+- **Pagination for long recipes**: one PNG per page (about 1500px
+  tall max) so nothing gets cut off, and the share sheet receives
+  all pages when the platform supports multi-file sharing
+- **Shopping list card**: same client-side aesthetic as the recipe
+  card, plus a Share as Text option for plain clipboard / SMS use
+- **Brand mark** in every share-card footer next to the wordmark
+- **Recipe View share icon** in the header so you don't have to back
+  out to the list and long-press to share what you're reading
+- **Desktop multi-page download fix**: staggered downloads so
+  Chromium delivers every page after the user approves the prompt
+
+### Pantry
+- **Expiration dates** UI on items: date picker in the editor, an
+  amber or red banner on the list when anything is within seven
+  days (or already past), and a per-card expiry pill
+- **Recipe usage pill** ("Used in N") on every card, with the count
+  computed via a single ingredient-scan pass
+- **Sort menu** in the toolbar: A to Z, Last Updated, Most Used,
+  Expires Soon. Non-default sorts flatten the category grouping
+  so the order isn't fighting the structure
+
+### Shopping
+- **Add from Meal Plan** bulk-imports the ingredients from every
+  planned cook in a date range. Dedupes by name and unit (summing
+  quantities when both sides have one), honours the existing
+  "only missing from pantry" filter
+- **Share** action in the header with image or plain-text options
+
+### Recipes
+- **Bulk Add to Cookbook** from the multi-select toolbar so a batch
+  of recipes lands in a cookbook in one operation
+
+### Manage hub
+- **Usage badges** on Recipe Categories, Pantry Categories, and
+  Units (in addition to Tags and Kitchen Gear, which already had
+  them). Mint pill when in use, dim border-only pill when zero,
+  so stale taxonomies stand out
+- **Material Symbols icon picker** for Pantry Categories: visual
+  grid with search instead of typing icon names from memory
+- **Drag-reorder** on Recipe and Pantry Categories matching the
+  existing Cookbooks pattern
+
+### Micro-interactions
+- **Heart pop** on the recipe favorite toggle and **star pop** on
+  per-cook ratings: small scale-up-and-settle keyframes that
+  honour `prefers-reduced-motion`
+
+## v0.10.0-beta.1 — first beta (2026-05-08)
+
+First beta tag on the dev repo. Everything from the build-out plus
+the polish phases (1–11) is shipped, end-to-end, and documented.
+README is a complete tour. No public release repo yet.
+
+### What landed since v0.1.0-dev
+- **Importers** — URL scrape, paste/upload (txt, JSON, JSON-LD,
+  schema.org), and Mealie / Tandoor / Paprika export-zip flows
+- **NutriTrace federation** — proxy + Settings UI + connectivity test;
+  ingredient food-link picker; cooked-recipe → NT diary log
+- **Recipe view polish** — sticky search, sticky save bar in editor,
+  drag-reorder for ingredients AND steps, step text markdown
+  formatting, print stylesheet, recipe-card SVG share, route
+  transitions, category color stripe along card edge
+- **Pantry polish** — slide-up sheet with in-place edit, inline
+  nutrient cards with FDA-style %DV, sub-sheet for linked recipes,
+  inline cross-family unit converter (~250-entry density catalog),
+  cookbook fraction typography
+- **Recipe extras** — categories with color, comments (rich-text,
+  bold/italic/lists), cookbooks collections, recipe sharing,
+  kitchens, kitchen gear field
+- **Trace AI** — persistent chat history per user with rate limiting,
+  multi-provider config (OpenAI / Anthropic / Gemini / Ollama)
+- **Backup audit** — full-backup now captures recipe_categories,
+  recipe_comments, pantry_categories, custom_units, disabled_units,
+  cookbooks, recipe_cookbook_links, recipe_shares, kitchens,
+  kitchen_members in addition to core tables
+- **i18n sweep** — 442-key en.json, zero missing keys
+
+## v0.1.0-dev — full app build-out (2026-05-04)
+
+CookTrace went from an empty shell to a feature-complete recipe app
+across a single intensive day of dev work. Every tab is real, every
+Slice 1–2 item is shipped, and Phases 3–6 of the roadmap are in.
+
+### Recipes
+- Full recipe model: name, description, hero image, **rating (★)**,
+  **favorite (♥)**, **yield text** (e.g. "12 cookies"), prep / cook
+  minutes, default servings, **scaling chips** (×0.5/×1/×2/×3) plus a
+  custom serving input
+- **Ingredient groups** — Mealie-style sections like "Sauce" or
+  "Dough"; default is one unnamed group rendering as a flat list
+- Steps support an **optional summary** rendering as "Step 1: Preheat
+  Oven" when filled
+- **FDA-style Nutrition Facts box** between Steps and Notes — full
+  nutriment catalog (31 fields), sub-row indenting, %DV column,
+  vitamins/minerals separated by a thick rule. Sodium ↔ salt
+  auto-derives via the EU regulatory factor with a calculator-icon
+  badge on the derived row
+- **Cook history** list (date / notes / photo / edit / delete) below
+  the box once you've cooked it at least once
+- "I cooked this" opens a **Cook Log dialog** (date picker + notes +
+  photo) rather than a one-click log
+- **Cook Mode** — "Start cooking" button requests Screen Wake Lock,
+  enlarges body text, persists ingredient + step checkboxes per
+  recipe in localStorage so a stove interruption doesn't lose your
+  place. Sticky banner with Reset Checks + Exit
+- **Long-press / right-click** any recipe card → context menu: Open ·
+  Favorite · Plan a cook · Add to shopping list · Duplicate · Share
+  card · Delete
+
+### Recipes list cards
+- Hero image, favorite-heart overlay, 5-star rating row, time +
+  serves + last-cooked + **pantry-match pill** (color-coded full /
+  partial / none — counts ingredients you have in stock)
+- Search, action-sheet "+" with four import paths (Manual · URL ·
+  Paste/upload · Photo when Trace AI is configured)
+
+### Pantry
+- Real CRUD page replacing the stub: alphabetical list with in-stock
+  toggle (optimistic), search, filter chips (All / In stock / Out),
+  Add modal with name + quantity + unit (UnitPicker) + notes +
+  optional image. 36×36 thumbnail in the list row.
+- **Auto-populates from recipe saves** — every ingredient name you
+  use in a recipe becomes a pantry row (case-insensitive dedup, "Flour"
+  + "flour" share one entry). Recipe ingredient → `pantry_item_id`
+  links happen server-side in a single transaction on save.
+- "X / Y in pantry" pill on every recipe card, computed server-side
+  from the user's in-stock set.
+
+### Diary (Phase 3)
+- Two views: **List** (60d back / 30d forward, grouped by date with
+  Planned/Past separators) and **Month** (calendar grid with pill
+  entries per day, today ringed in accent color)
+- **Plan-a-cook** modal: date picker + searchable recipe picker → one
+  click writes a `kind=planned` cook_diary row
+- Each entry: clickable thumbnail navigates to the recipe; "Cooked"
+  button on planned entries one-taps the conversion; delete on every row
+
+### Shopping (Phase 4)
+- Quick-add row at the top: name + quantity + UnitPicker + add
+- Items grouped by aisle (Other pinned bottom), checkboxes per row
+  with optimistic toggle + revert-on-error
+- "X remaining · Y checked" status bar with bulk Clear-Checked action
+- **"Add from recipe"** opens a modal with searchable recipe picker
+  + "only add what's missing from pantry" toggle (default on). One
+  tap pulls the missing ingredients onto the list with their quantity
+  + unit + pantry_id link
+- Empty state CTA points at the same flow
+
+### URL recipe scraper (Phase 4)
+- POST `/api/recipes/scrape` fetches any URL, parses
+  schema.org/Recipe JSON-LD, normalises into our shape (handles @graph
+  nesting, HowToSection trees, ISO 8601 durations, all standard
+  nutrition fields, keyword splitting), then runs through the regular
+  create flow so pantry-linking + sodium/salt derivation apply.
+- SSRF-guarded: http(s)-only, blocks loopback + private IP ranges,
+  8s timeout, 5MB cap, identifies as CookTrace via User-Agent.
+- Wired into the "+" menu URL import dialog.
+
+### Recipe-card share (Phase 6)
+- GET `/api/recipes/:id/card.png` returns a server-rendered
+  Pinterest-style 600×800 SVG (hero image with bottom-fade overlay,
+  word-wrapped name, time/serves/yield subtitle, COOKTRACE
+  watermark). Renders correctly in browsers, Slack, Discord, iMessage
+  link previews. Wired into the long-press menu Share action via
+  navigator.share / clipboard fallback.
+
+### NutriTrace federation (Phase 5)
+- Settings → "NutriTrace federation" section: URL + access-token
+  fields, show/hide on the token, **Test** button (proxies through
+  the server to NT `/api/auth/me`), enable toggle (gated on
+  URL+token).
+- `/api/nt/test`, `/api/nt/foods`, `/api/nt/log-meal` server proxy —
+  bearer token never leaves the server.
+- Foundation ready; auto-log-cooked-to-NT-diary + Pantry NT food
+  picker land as consumer wiring tickets next.
+
+### Trace AI assistant (Phase 5)
+- Floating chat FAB on every page (gradient circle with the TraceFace
+  mascot) — only renders when AI is enabled in Settings.
+- Slide-up chat panel with conversation history, "thinking" dots,
+  refresh-to-clear, multi-line input that submits on Enter.
+- Settings → Trace Assistant: enable toggle, assistant name, provider
+  dropdown (Claude / OpenAI / Gemini / OpenAI-compatible), API key
+  with show/hide, custom base URL when "OpenAI-compat" is picked,
+  model dropdown / freeform field, **Test** button. envLocks.ai
+  disables the key field when AI is configured server-side via env
+  vars.
+- Server proxy at `/api/ai/chat` was already in place — Trace.svelte
+  just calls it. API key never reaches the WebView.
+
+### Ingredient unit picker
+- Replaced the previous datalist with a full **UnitPicker** combobox.
+  37 cooking units in 5 categories (Volume US, Volume Metric, Weight
+  US, Weight Metric, Count / descriptive). Click opens for browse
+  (shows everything regardless of saved value); type to switch into
+  search mode and filter. Free-text fallback for splash / drizzle /
+  to taste / etc. Custom units configurable via a `customUnits`
+  setting (Setting UI to pick coming).
+
+### Image picker (Slice 2D)
+- `ImagePicker.svelte` — three buttons (Camera / Upload / URL), ghost
+  styling, capped 420px-wide centered preview. Camera works on PWA
+  via `getUserMedia` (in-page popup with capture button) and on
+  Capacitor via `@capacitor/camera`. Wired into RecipeEditor,
+  CookLogDialog, and Pantry edit modal.
+
+### Settings (refactored to NT-uniform)
+- Every section is now collapsible (chevron toggles, slide
+  animation, closed by default). Header: accent-colored material
+  icon in a rounded square.
+- Theme is a `<select>` dropdown ("System default" / "Dark" /
+  "Light"). Navigation style + measurement system also dropdowns.
+- 12 named accent presets (Mint, Blue, Red, Purple, Orange, Teal,
+  Pink, Yellow, Indigo, Lime, Rose, Cyan) plus a custom-color swatch
+  with conic-gradient rainbow.
+- **Custom color picker sheet** — live colored preview with hex
+  readout, Hue slider, Saturation slider (gradient updates as
+  hue/lightness change), Lightness slider, RGB inputs (R / G / B
+  three-up), Hex input with color dot. All math copied verbatim from
+  NutriTrace.
+- New sections: **Nutrition** (visible-nutriments picker — checkbox
+  per nutriment grouped by category, defaults / show-all buttons),
+  **NutriTrace federation**, **Trace Assistant** (real config),
+  **Notifications** (still placeholder for cook-day reminders).
+
+### Internationalization
+- **Energy unit** — independent setting (Calories / Kilojoules), not
+  tied to measurement system. Most metric countries (UK / EU / Canada)
+  still default to kcal; AU / NZ use kJ. Stored values always stay in
+  kcal — switching is display-only (1 kcal = 4.184 kJ).
+- **Wizard locale auto-detect** — `navigator.language` seeds the
+  defaults: `en-AU` / `en-NZ` → kJ + metric, `en-US` → kcal + imperial,
+  everyone else → kcal + metric. Fully overridable in Settings.
+- **Trace AI prompt** — system prompt tells the assistant the user's
+  preferred measurement system + energy unit so its responses come back
+  in the right units on the first try (no "convert this for me"
+  round-trip).
+
+### Other
+- `feedback_dev_versioning.md` honored — no version bump.
+- `cheerio` added to server dependencies for the URL scraper.
+- Banner: open stockpot with rising animated steam (no lid, no
+  bubbles, no chef-hat).
+
+## v0.1.0-dev.0 — Foundation fork (2026-05-03)
+
+Initial CookTrace fork from NutriTrace v1.0.0-rc.14. Carries over the auth,
+OIDC SSO, settings sync, sidebar/bottom-nav layout, Capacitor shell, and
+Docker deploy stack. NutriTrace-specific food/diary/wellness/Fitbit/Garmin/
+Withings/Mealie code stripped; CookTrace recipe/pantry/cook-diary/shopping
+schema added (empty stubs in this version — feature work follows in Phase 1+).
+
+This release is a runnable empty shell suitable for further development.
+Nothing is end-user usable yet.

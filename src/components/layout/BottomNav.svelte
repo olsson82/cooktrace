@@ -1,0 +1,114 @@
+<script>
+  import { location, push } from 'svelte-spa-router';
+  import { _ } from 'svelte-i18n';
+
+  const TABS = [
+    { path: '/recipes',  icon: 'menu_book',     label: 'Recipes'  },
+    { path: '/pantry',   icon: 'kitchen',       label: 'Pantry'   },
+    { path: '/diary',    icon: 'event_note',    label: 'Diary'    },
+    { path: '/shopping', icon: 'shopping_cart', label: 'Shopping' },
+    { path: '/manage',   icon: 'tune',          label: 'Manage'   },
+    { path: '/settings', icon: 'settings',      label: 'Settings' },
+  ];
+
+  $: tabs = TABS;
+  $: activeIdx = (() => {
+    const base = $location.split('?')[0];
+    // Treat '/' as Recipes
+    const norm = base === '/' ? '/recipes' : base;
+    // Prefix-match so `/manage/tags`, `/recipes/123`, `/pantry/4`, etc.
+    // light up their parent tab. Walk longest-prefix-first so a path
+    // like `/manage` doesn't accidentally match `/m` or `/recipes`.
+    const sorted = tabs
+      .map((t, i) => ({ t, i }))
+      .sort((a, b) => b.t.path.length - a.t.path.length);
+    for (const { t, i } of sorted) {
+      if (norm === t.path || norm.startsWith(t.path + '/')) return i;
+    }
+    return 0;
+  })();
+
+  function go(path) { push(path); }
+</script>
+
+<nav class="bottom-nav" role="navigation" aria-label="Main navigation">
+  <div
+    class="nav-pill"
+    style="left: calc({(activeIdx / tabs.length * 100).toFixed(2)}%); width: calc(100% / {tabs.length})"
+  ></div>
+
+  {#each tabs as tab, i}
+    <button
+      class="nav-tab"
+      class:active={i === activeIdx}
+      on:click={() => go(tab.path)}
+      aria-label={tab.label}
+      aria-current={i === activeIdx ? 'page' : undefined}
+    >
+      <span class="material-symbols-rounded nav-icon">{tab.icon}</span>
+      <span class="nav-label">{tab.label}</span>
+    </button>
+  {/each}
+</nav>
+
+<style>
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(var(--nav-h) + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    background: var(--glass-surface);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: stretch;
+    z-index: 50;
+  }
+
+  .nav-pill {
+    position: absolute;
+    top: 6px;
+    left: 0;
+    height: calc(100% - 12px - var(--safe-bottom));
+    background: linear-gradient(135deg, var(--accent-dim), rgba(79,255,176,0.22));
+    border-radius: var(--radius-md);
+    box-shadow: 0 0 16px var(--accent-dim);
+    transition: left var(--dur-base) var(--ease-inout);
+    pointer-events: none;
+  }
+
+  .nav-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 0 4px;
+    position: relative;
+    transition: color var(--dur-fast) var(--ease-out);
+    color: var(--text-3);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .nav-tab.active  { color: var(--accent); }
+  .nav-tab:active  { transform: scale(0.92); }
+
+  .nav-icon {
+    font-size: 22px;
+    transition: transform var(--dur-fast) var(--ease-spring);
+  }
+  .nav-tab.active .nav-icon { transform: scale(1.1); }
+
+  .nav-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+</style>
